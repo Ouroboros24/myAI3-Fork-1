@@ -66,3 +66,7 @@ export async function searchGames(query: string, topK = 6, filter?: Record<strin
   const results = await queryPinecone(vector, topK, filter);
   return results.map(r => ({ id: r.id, score: r.score, meta: r.metadata }));
 }
+
+
+// alias for compatibility with route.ts
+export { searchGames as vectorDatabaseSearch };
