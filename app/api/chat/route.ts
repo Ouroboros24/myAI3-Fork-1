@@ -5,9 +5,7 @@ import {
   stepCountIs,
   createUIMessageStream,
   createUIMessageStreamResponse,
-  tool,
 } from "ai";
-import { z } from "zod"; // Make sure zod is imported
 import { MODEL } from "@/config";
 import { SYSTEM_PROMPT } from "@/prompts";
 import { isContentFlagged } from "@/lib/moderation";
@@ -106,41 +104,6 @@ export async function POST(req: Request) {
     messages: convertToModelMessages(messages),
     tools: {
       webSearch,
-      // Properly wrapped vectorDatabaseSearch tool
-      searchGames: tool({
-        description: "Search the QuestGiver game database for relevant games based on user preferences, mood, or experience type.",
-        parameters: z.object({
-          query: z.string().describe("The search query describing what games to find"),
-          topK: z.number().optional().default(6).describe("Number of results to return"),
-          experienceFilter: z.string().optional().describe("Filter by experience type: 'story-driven', 'competitive', or 'cozy'"),
-        }),
-        execute: async ({ query, topK = 6, experienceFilter }) => {
-          const filterObj: Record<string, any> | undefined = experienceFilter
-            ? { experience_tags: { $in: [experienceFilter] } }
-            : undefined;
-          
-          const hits = await vectorDatabaseSearch(query, topK, filterObj);
-          
-          if (!Array.isArray(hits) || hits.length === 0) {
-            return { games: [], message: "No games found matching your criteria." };
-          }
-
-          const games = hits.map((h: any) => {
-            const m = h.meta || {};
-            return {
-              title: m.title ?? m.name ?? `Game ${h.id}`,
-              description: m.description || m.why_recommended || m.summary || "",
-              experience_tags: m.experience_tags || [],
-              content_rating: m.content_rating || "",
-              content_warnings: m.content_warnings || [],
-              url: m.rawg_url || m.url || "",
-              score: h.score,
-            };
-          });
-
-          return { games, count: games.length };
-        },
-      }),
     },
     stopWhen: stepCountIs(10),
     providerOptions: {
