@@ -6,6 +6,9 @@ import { isContentFlagged } from '@/lib/moderation';
 import { webSearch } from './tools/web-search';
 import { vectorDatabaseSearch } from './tools/search-vector-database';
 
+
+{ role: "user", content: `User: ${userQuery}\n\nRetrievals:\n${body.retrievalContext || ""}\n\nAnswer with 2-4 recommendations including content warnings and source URLs.` }
+
 export const maxDuration = 30;
 export async function POST(req: Request) {
     const { messages }: { messages: UIMessage[] } = await req.json();
