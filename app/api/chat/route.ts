@@ -11,6 +11,28 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
     const { messages }: { messages: UIMessage[] } = await req.json();
 
+  // --- QuestGiver retrieval context: embed + pinecone search ---
+  try {
+    const userQuery = (body.message || body.prompt || body.query || "").toString();
+    const filter = {};
+    if (body.experience_filter) filter["experience_tags"] = { "$in": [body.experience_filter] };
+    const hits = await searchGames(userQuery, body.top_k ?? 6, Object.keys(filter).length ? filter : undefined);
+    const retrievalContext = hits.map((h, idx) => {
+      const m = h.meta || {};
+      const title = m.title ?? m.name ?? `Game ${h.id}`;
+      const desc = (m.description || m.why_recommended || m.summary || "").replace(/\n+/g," ");
+      const warn = (m.content_warnings && m.content_warnings.join(", ")) || "";
+      const url = m.rawg_url || m.url || "";
+      return `Result ${idx+1}: ${title}\nWhy: ${desc}\nWarnings: ${warn}\nURL: ${url}`;
+    }).join("\n\n");
+    // attach to body for later prompt assembly
+    body.retrievalContext = retrievalContext;
+  } catch (err) {
+    console.warn("retrieval error:", err);
+    body.retrievalContext = "";
+  }
+  // --- end retrieval ---
+
     const latestUserMessage = messages
         .filter(msg => msg.role === 'user')
         .pop();
